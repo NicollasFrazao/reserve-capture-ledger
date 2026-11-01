@@ -21,7 +21,8 @@
     "test:tooling": "vitest run --project tooling",
     "check:architecture": "depcruise src test --config .dependency-cruiser.cjs",
     "check:context": "node scripts/check-context-surfaces.mjs",
-    "export:context": "node scripts/check-context-surfaces.mjs --write"
+    "export:context": "node scripts/check-context-surfaces.mjs --write",
+    "prepare": "husky"
   },
   "dependencies": {
     "fastify": "5.12.7",

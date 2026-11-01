@@ -19,7 +19,9 @@
     "test:integration": "vitest run --project integration",
     "test:coverage": "vitest run --coverage",
     "test:tooling": "vitest run --project tooling",
-    "check:architecture": "depcruise src test --config .dependency-cruiser.cjs"
+    "check:architecture": "depcruise src test --config .dependency-cruiser.cjs",
+    "check:context": "node scripts/check-context-surfaces.mjs",
+    "export:context": "node scripts/check-context-surfaces.mjs --write"
   },
   "dependencies": {
     "fastify": "5.12.7",

@@ -1,0 +1,89 @@
+---
+type: doc
+name: architecture
+description: Layers and their import rules, invariants, concurrency and idempotency
+category: architecture
+generated: 2026-11-01
+status: filled
+scaffoldVersion: "2.0.0"
+---
+
+# Architecture
+
+A single Node.js service over PostgreSQL 16. PostgreSQL is the source of truth for balances,
+reservations, the ledger and idempotency keys; the process holds no state between requests.
+
+## Layers
+
+```
+src/
+  domain/          Money, Account, Reservation, LedgerError subclasses     imports nothing
+  application/     LedgerService, ports (repository interfaces), Clock      imports domain
+  infrastructure/  pg pool, PgTransactionRunner, Pg*Repository, migrate     imports application, domain
+  http/            Fastify routes, zod schemas, error mapping                imports application, domain
+  server.ts        composition root: config, pool, service, app, sweep      imports everything
+```
+
+### Layer rules
+
+Checked by `npm run check:architecture` (dependency-cruiser, `.dependency-cruiser.cjs`):
+
+| Rule | Why |
+| --- | --- |
+| `domain-imports-nothing` | The money rules and the state machine are testable in microseconds and cannot depend on I/O by accident. |
+| `application-imports-only-domain` | Use cases depend on interfaces (`ports.ts`), so the transaction and lock strategy is swappable and visible in one place. Node built-ins (`node:crypto` for UUIDs and hashes) are allowed. |
+| `adapters-do-not-import-each-other` | HTTP never reaches the database except through the service. |
+| `no-circular` | A cycle makes module load order matter. Type-only imports count too. |
+| `no-orphans`, `not-to-unresolvable`, `no-dev-dependencies-in-src` | Dead modules, broken imports, and production code that needs a devDependency. |
+
+## Invariants
+
+Each is enforced twice: by the domain, and by the database as a backstop.
+
+| Invariant | Domain | Database (`migrations/001_schema.sql`) |
+| --- | --- | --- |
+| No overdraft: `0 <= held <= balance` | `Account.hold` throws `InsufficientFunds` | `CHECK (balance >= 0)`, `CHECK (held <= balance)` |
+| Amounts are positive integers | `Money.of` / `Money.positive` | `CHECK (amount > 0)`, `bigint` columns |
+| A reservation leaves `reserved` once | `Reservation` state machine (`TRANSITIONS`) | trigger `reservations_guard_transition`; no `DELETE` |
+| A capture is at most the reserved amount | `Reservation.capture` | `CHECK (captured_amount <= amount)` |
+| One capture entry per reservation | — | `UNIQUE (reservation_id)` on `ledger_entries` |
+| The ledger is append-only | — | triggers refuse `UPDATE`, `DELETE`, `TRUNCATE` |
+| `balance = sum(ledger entries)`, `held = sum(active reservations)` | every write updates both in one transaction | the `account_discrepancies` view lists violations; tests require it empty |
+
+## Concurrency
+
+- Isolation is PostgreSQL's default, `READ COMMITTED`. Correctness comes from row locks, not from
+  the isolation level.
+- Every write locks in the same order: **idempotency key** (the unique index, by inserting it),
+  **account row** (`SELECT ... FOR UPDATE`), **reservation row**. A capture or release first reads
+  the reservation without a lock to learn its account, then locks the account, then locks and
+  re-reads the reservation. One order means no deadlocks.
+- The account row is the serialization point for its money. Two reserves on one account run one
+  after the other; reserves on different accounts do not contend.
+- Why a row lock instead of a conditional `UPDATE ... WHERE balance - held >= $1`: see
+  [ADR 0001](adr/0001-row-lock-for-balance-changes.md).
+
+## Idempotency
+
+- The `Idempotency-Key` is claimed with `INSERT ... ON CONFLICT DO NOTHING` in the **same
+  transaction** as the operation and its stored outcome ([ADR 0002](adr/0002-idempotency-in-the-operation-transaction.md)).
+- A duplicate arriving while the original runs waits on the unique index, then reads and replays the
+  committed outcome. A different fingerprint (operation + normalized parameters, SHA-256) is a
+  `409 idempotency_key_conflict`.
+- Business rejections (`LedgerError`) are outcomes: stored, replayed, and their partial writes are
+  undone by a savepoint. Unexpected errors roll the whole transaction back, key included.
+- Outcomes are stored as `json`, not `jsonb`, so a replay is byte for byte the original response.
+
+## Expiry
+
+- `LedgerService.expireDue` finds due reservations, then expires each in its own short transaction,
+  with the same lock order. Several sweeps can run at once; the second to lock a reservation sees it
+  is no longer due and skips it.
+- `Reservation.capture` also refuses a capture past `expiresAt`, so a late capture fails even when
+  the sweep is behind. A release after expiry is allowed: the client gives the hold up either way.
+
+## Time and identifiers
+
+- Time comes from the injected `Clock`; tests move a fake clock instead of sleeping.
+- Reservation ids are UUIDs generated by the service (`randomUUID`), ledger entry ids are database
+  identities, account ids are chosen by the client (`[A-Za-z0-9_-]{1,64}`).

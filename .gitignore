@@ -2,3 +2,12 @@ node_modules/
 coverage/
 *.log
 .env
+
+# dotcontext local state: harness config, caches, sessions and plans. Only
+# .context/docs, .context/agents and .context/skills are versioned.
+.context/config.json
+.context/config/
+.context/plans/
+.context/cache/
+.context/runtime/
+.context/**/archive/

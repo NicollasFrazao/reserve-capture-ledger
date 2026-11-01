@@ -31,7 +31,7 @@ Closes #12
 Examples from this repository:
 
 ```
-feat(http): REST API with Idempotency-Key and the expiry sweep
+feat(http): add the REST API with Idempotency-Key and the expiry sweep
 test: enforce 80% coverage on all four metrics
 build: check the layer rules with dependency-cruiser
 ```

@@ -22,7 +22,8 @@
     "check:architecture": "depcruise src test --config .dependency-cruiser.cjs",
     "check:context": "node scripts/check-context-surfaces.mjs",
     "export:context": "node scripts/check-context-surfaces.mjs --write",
-    "prepare": "husky"
+    "prepare": "husky",
+    "check:unused": "knip"
   },
   "dependencies": {
     "fastify": "5.12.7",

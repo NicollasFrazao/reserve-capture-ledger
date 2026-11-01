@@ -4,6 +4,7 @@ import { createPool } from '../../src/infrastructure/database.js';
 import { migrate } from '../../src/infrastructure/migrate.js';
 
 declare module 'vitest' {
+  /** Values the global setup hands to every test file through `inject`. */
   export interface ProvidedContext {
     databaseUrl: string;
   }
@@ -17,11 +18,17 @@ declare module 'vitest' {
 export default async function setup(project: TestProject): Promise<void> {
   const baseUrl = new URL(process.env.DATABASE_URL ?? 'postgres://ledger:ledger@localhost:5432/ledger');
   const testUrl = new URL(baseUrl);
-  testUrl.pathname = `${baseUrl.pathname.replace(/^\//, '')}_test`;
+
+  testUrl.pathname = `${baseUrl.pathname.replace(
+    /^\//,
+    '',
+  )}_test`;
+
   const testDatabase = testUrl.pathname.slice(1);
 
   const admin = new pg.Client({ connectionString: baseUrl.toString() });
   await admin.connect();
+
   try {
     await admin.query(`DROP DATABASE IF EXISTS "${testDatabase}" WITH (FORCE)`);
     await admin.query(`CREATE DATABASE "${testDatabase}"`);
@@ -29,12 +36,19 @@ export default async function setup(project: TestProject): Promise<void> {
     await admin.end();
   }
 
-  const pool = createPool(testUrl.toString(), 1);
+  const pool = createPool(
+    testUrl.toString(),
+    1,
+  );
+
   try {
     await migrate(pool);
   } finally {
     await pool.end();
   }
 
-  project.provide('databaseUrl', testUrl.toString());
+  project.provide(
+    'databaseUrl',
+    testUrl.toString(),
+  );
 }

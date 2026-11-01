@@ -9,7 +9,13 @@ describe('Money', () => {
     expect(Money.of(Number.MAX_SAFE_INTEGER).units).toBe(Number.MAX_SAFE_INTEGER);
   });
 
-  it.each([0.5, 10.01, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+  it.each([
+    0.5,
+    10.01,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.MAX_SAFE_INTEGER + 1,
+  ])(
     'rejects %s, which is not a safe integer',
     (value) => {
       expect(() => Money.of(value)).toThrow(InvalidAmount);

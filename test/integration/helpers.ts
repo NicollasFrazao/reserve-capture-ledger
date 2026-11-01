@@ -9,18 +9,21 @@ import { createPool, PgTransactionRunner } from '../../src/infrastructure/databa
 import { buildApp } from '../../src/http/app.js';
 
 /** A clock the test moves by hand. Starts at the real current time. */
-export class FakeClock implements Clock {
+class FakeClock implements Clock {
   private current = new Date();
 
+  /** Returns the fake current time. */
   now(): Date {
     return new Date(this.current);
   }
 
+  /** Moves the fake time forward. */
   advanceSeconds(seconds: number): void {
     this.current = new Date(this.current.getTime() + seconds * 1000);
   }
 }
 
+/** Everything one test file needs: a pool on the test database, a service on a fake clock, and the HTTP app. */
 export interface TestContext {
   pool: pg.Pool;
   runner: PgTransactionRunner;
@@ -30,12 +33,27 @@ export interface TestContext {
   close(): Promise<void>;
 }
 
+/**
+ * Builds a {@link TestContext} on the database the global setup prepared.
+ *
+ * @param wrapRunner - Optionally decorates the transaction runner, to inject failures or delays.
+ */
 export function createTestContext(wrapRunner?: (runner: TransactionRunner) => TransactionRunner): TestContext {
-  const pool = createPool(inject('databaseUrl'), 20);
+  const pool = createPool(
+    inject('databaseUrl'),
+    20,
+  );
+
   const runner = new PgTransactionRunner(pool);
   const clock = new FakeClock();
-  const service = new LedgerService(wrapRunner ? wrapRunner(runner) : runner, clock);
+
+  const service = new LedgerService(
+    wrapRunner ? wrapRunner(runner) : runner,
+    clock,
+  );
+
   const app = buildApp(service);
+
   return {
     pool,
     runner,
@@ -66,13 +84,12 @@ export function interceptTransactions(
           idempotency: tx.idempotency,
           savepoint: (inner) => tx.savepoint(inner),
           ...override(tx),
-        }),
-      ),
+        })),
   });
 }
 
-/** Makes every account lock take `ms` longer, so concurrent requests overlap for sure. */
-export const slowAccountLocks = (ms: number): ((runner: TransactionRunner) => TransactionRunner) =>
+/** Makes every account lock take `delayMilliseconds` longer, so concurrent requests overlap for sure. */
+export const slowAccountLocks = (delayMilliseconds: number): ((runner: TransactionRunner) => TransactionRunner) =>
   interceptTransactions((tx) => ({
     accounts: {
       find: (id) => tx.accounts.find(id),
@@ -80,28 +97,52 @@ export const slowAccountLocks = (ms: number): ((runner: TransactionRunner) => Tr
       save: (account) => tx.accounts.save(account),
       lock: async (id) => {
         const account = await tx.accounts.lock(id);
-        await new Promise((resolve) => setTimeout(resolve, ms));
+
+        await new Promise((resolve) => setTimeout(
+          resolve,
+          delayMilliseconds,
+        ));
+
         return account;
       },
     },
   }));
 
+/** A fresh account id, so tests never share an account. */
 export const newAccountId = (): string => `acct-${randomUUID()}`;
+
+/** A fresh Idempotency-Key. */
 export const newKey = (): string => randomUUID();
 
-/** POST with an Idempotency-Key, returning status, headers and the parsed body. */
+/** What {@link post} returns. */
+export interface PostResult {
+  status: number;
+  body: Record<string, unknown>;
+  raw: string;
+  replayed: boolean;
+}
+
+/**
+ * POSTs through the app with an Idempotency-Key.
+ *
+ * @param app - The app under test.
+ * @param url - The path to post to.
+ * @param body - The JSON body; `undefined` sends none.
+ * @param key - The key to send; a fresh one by default, `null` to send none.
+ */
 export async function post(
   app: FastifyInstance,
   url: string,
   body: unknown,
   key: string | null = newKey(),
-): Promise<{ status: number; body: Record<string, unknown>; raw: string; replayed: boolean }> {
+): Promise<PostResult> {
   const response = await app.inject({
     method: 'POST',
     url,
     headers: key === null ? {} : { 'idempotency-key': key },
     ...(body === undefined ? {} : { payload: body as Record<string, unknown> }),
   });
+
   return {
     status: response.statusCode,
     body: response.json<Record<string, unknown>>(),
@@ -110,15 +151,35 @@ export async function post(
   };
 }
 
-export async function fundedAccount(app: FastifyInstance, amount: number): Promise<string> {
+/** Opens an account with `amount` credits and returns its id. */
+export async function fundedAccount(
+  app: FastifyInstance,
+  amount: number,
+): Promise<string> {
   const id = newAccountId();
-  const { status } = await post(app, `/accounts/${id}/credits`, { amount });
+
+  const { status } = await post(
+    app,
+    `/accounts/${id}/credits`,
+    { amount },
+  );
+
   expect(status).toBe(201);
+
   return id;
 }
 
-export async function countRows(pool: pg.Pool, sql: string, params: unknown[]): Promise<number> {
-  const { rows } = await pool.query<{ count: number }>(`SELECT count(*)::int AS count FROM (${sql}) AS t`, params);
+/** Counts the rows `sql` returns. */
+export async function countRows(
+  pool: pg.Pool,
+  sql: string,
+  params: unknown[],
+): Promise<number> {
+  const { rows } = await pool.query<{ count: number }>(
+    `SELECT count(*)::int AS count FROM (${sql}) AS counted`,
+    params,
+  );
+
   return rows[0]?.count ?? 0;
 }
 
@@ -138,5 +199,6 @@ export async function expectLedgerConsistent(pool: pg.Pool): Promise<void> {
       SELECT balance_after FROM ledger_entries e WHERE e.account_id = a.id ORDER BY e.id DESC LIMIT 1
     ) last ON true
     WHERE last.balance_after <> a.balance`);
+
   expect(staleSnapshots).toEqual([]);
 }

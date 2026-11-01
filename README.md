@@ -185,6 +185,8 @@ Every error has the same shape:
 
 ## Design decisions and trade-offs
 
+The three that would be expensive to reverse are also written up as decision records in [`.context/docs/adr/`](.context/docs/adr/README.md).
+
 **Row lock, not a conditional update.** The alternative to `SELECT … FOR UPDATE` is a single statement such as `UPDATE accounts SET held = held + $1 WHERE id = $2 AND balance - held >= $1`, which holds the row lock for less time. I chose the explicit lock because an operation here writes several rows (account, reservation, ledger entry, idempotency outcome) that must agree, and because it keeps the rule in the domain model: the code reads the account, `Account.hold()` decides, and the error says how much was available. With the conditional update the rule moves into SQL, and a zero-row result does not tell "insufficient funds" from "no such account" without a second query. The cost is that writes to one account are serialized. For very hot accounts, the usual next steps are a conditional update, or splitting the balance into sub-accounts.
 
 **Lock order.** Every write takes its locks in the same order: idempotency key, then account, then reservation. A capture first reads the reservation without a lock to learn its account, locks the account, then locks and re-reads the reservation. One fixed order is what keeps parallel captures, releases and sweeps free of deadlocks.
@@ -206,7 +208,7 @@ Every error has the same shape:
 ## Tests
 
 ```
-test/unit/          domain: Money, Account, Reservation state machine, request fingerprint
+test/unit/          domain: Money, Account, Reservation state machine, request fingerprint, config
 test/integration/   real PostgreSQL, through the HTTP adapter
   lifecycle         credit, reserve, capture, release; error mapping and validation
   idempotency       replays (sequential and parallel), 409 on a different payload or endpoint,
@@ -215,7 +217,12 @@ test/integration/   real PostgreSQL, through the HTTP adapter
                     a capture racing a release: exactly one wins
   expiry            sweep timing, late capture, final states untouched, four sweeps in parallel
   invariants        a seeded random workload of every operation, plus the database guards
+  migrate           the schema built on an empty database; concurrent runs apply nothing twice
+eslint-rules/       the local ESLint rules, through ESLint's RuleTester
+scripts/            the context-surface export and check
 ```
+
+Coverage is gated at 80% on lines, branches, functions and statements.
 
 Every integration test ends by checking the ledger invariant on the whole database: no row in `account_discrepancies`, and each account's last `balance_after` equals its balance.
 
@@ -227,16 +234,19 @@ The integration suite drops and recreates a separate `<database>_test` database 
 
 ```
 src/
-  domain/            Money, Account, Reservation (state machine), errors: no I/O
+  domain/            Money, Account, Reservation (state machine), errors: no imports at all
   application/       LedgerService (use cases + idempotency), ports, clock
-  infrastructure/    pg pool and transactions, repositories, migration runner
+  infrastructure/    pg pool and transactions, repositories, migration runner, config
   http/app.ts        Fastify routes, zod validation, error mapping
-  server.ts          entry point: HTTP server and the expiry sweep
+  server.ts          composition root: HTTP server and the expiry sweep
 migrations/          SQL schema
 test/                Vitest: unit and integration projects
+eslint-rules/        local readability rules, with tests
+scripts/             export and check of the agent instruction files
+.context/            context base: conventions, architecture, decisions, glossary
 ```
 
-The application layer depends on repository interfaces (`ports.ts`), not on `pg`; the infrastructure layer implements them. The domain has no dependencies at all.
+The application layer depends on repository interfaces (`ports.ts`), not on `pg`; the infrastructure layer implements them. The domain has no dependencies at all. These rules are not a convention only: `npm run check:architecture` (dependency-cruiser) fails on a layer violation or an import cycle.
 
 ## Running it
 
@@ -244,11 +254,20 @@ Requirements: Node.js 22 and Docker.
 
 ```bash
 docker compose up -d --wait   # PostgreSQL 16 on localhost:5432
-npm ci
-npm run lint
-npm run typecheck
-npm test                      # unit + integration (needs the database)
+npm ci                        # also installs the git hooks
+npm test                      # unit + tooling + integration (needs the database)
 npm run test:unit             # domain only, no database
+```
+
+The quality gate, one command per CI job:
+
+```bash
+npm run lint                  # ESLint with sonarjs, TSDoc and readability rules; warnings fail
+npm run typecheck             # tsc, strict
+npm run check:architecture    # layer rules and cycles (dependency-cruiser)
+npm run check:unused          # unused files, exports, types, dependencies (knip)
+npm run test:coverage         # all tests, 80% coverage on all four metrics
+npm run check:context         # agent instruction files in sync with .context/docs/README.md
 ```
 
 To run the API:
@@ -272,6 +291,10 @@ npm start                     # http://localhost:3000
 - Double-entry bookkeeping; the ledger records one side of each movement
 - Listing endpoints (ledger history, reservations by account) and pagination
 - A build step and container image for the API; it runs from source with `tsx`
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The conventions, architecture notes and decision records live in [`.context/docs/`](.context/docs/README.md); security reports go through [SECURITY.md](SECURITY.md).
 
 ## License
 

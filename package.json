@@ -18,7 +18,8 @@
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "test:coverage": "vitest run --coverage",
-    "test:tooling": "vitest run --project tooling"
+    "test:tooling": "vitest run --project tooling",
+    "check:architecture": "depcruise src test --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "fastify": "5.12.7",

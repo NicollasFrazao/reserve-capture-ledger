@@ -49,6 +49,7 @@ const readabilityRules = {
   'id-length': ['error', { min: 2, properties: 'never', exceptions: ['T'] }],
   '@typescript-eslint/no-unused-vars': 'error',
   '@typescript-eslint/no-unused-expressions': 'error',
+  '@typescript-eslint/no-unused-private-class-members': 'error',
   '@typescript-eslint/no-magic-numbers': [
     'error',
     {

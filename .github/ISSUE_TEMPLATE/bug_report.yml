@@ -1,0 +1,41 @@
+name: Bug report
+description: Something behaves differently from the README or the documented invariants.
+title: 'fix: '
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The request(s) sent, the response received, and the state of the account afterwards.
+      placeholder: |
+        POST /reservations with Idempotency-Key k1, {"accountId":"a1","amount":100}
+        -> 201, then the same request again -> 201 with a different reservation id
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Which documented behaviour or invariant this contradicts.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Ideally a failing test, or the smallest sequence of requests. Say whether requests were concurrent.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      placeholder: e.g. 1a2b3c4
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node.js and PostgreSQL versions, and anything non-default in the configuration.

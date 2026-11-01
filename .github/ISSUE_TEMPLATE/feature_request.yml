@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a new operation, endpoint or guarantee.
+title: 'feat: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What a client cannot do today, or which failure mode is not covered.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The behaviour you want, including what happens on a retry and under concurrent requests.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: I checked the "Out of scope" list in the README and the technical debt in .context/docs/tech-debt.md
+          required: true

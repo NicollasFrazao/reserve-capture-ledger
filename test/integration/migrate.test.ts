@@ -1,9 +1,13 @@
-import { afterAll, describe, expect, inject, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, inject, it } from 'vitest';
 import { createPool } from '../../src/infrastructure/database.js';
 import { migrate } from '../../src/infrastructure/migrate.js';
-import { createTestContext } from './helpers.js';
+import { createTestContext, expectLedgerConsistent } from './helpers.js';
 
 const ctx = createTestContext();
+
+afterEach(async () => {
+  await expectLedgerConsistent(ctx.pool);
+});
 
 afterAll(async () => {
   await ctx.close();

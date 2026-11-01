@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      lint:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - '@stylistic/*'
+          - 'typescript-eslint'
+      test:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci

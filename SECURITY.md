@@ -10,12 +10,12 @@ with:
 - the requests or the test that reproduce it;
 - the commit you tested.
 
-You can expect an acknowledgement within a week. Fixes are released on `main` and credited in the
+You can expect an acknowledgement within a week. Fixes are released on `master` and credited in the
 advisory unless you prefer otherwise.
 
 ## Supported versions
 
-Only the latest commit on `main` is supported.
+Only the latest commit on `master` is supported.
 
 ## Scope
 

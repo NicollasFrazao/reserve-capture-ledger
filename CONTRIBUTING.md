@@ -15,7 +15,7 @@ docker compose up -d --wait    # PostgreSQL 16 for the integration tests
 
 ## Branches
 
-Branch from `main`, named by the kind of change:
+Branch from `master`, named by the kind of change:
 
 | Prefix | For |
 | --- | --- |
@@ -78,7 +78,7 @@ Code, comments, docs, commits, issues and pull requests are in English.
 
 After the repository is published, configure on GitHub:
 
-- **Branch ruleset on `main`**: require a pull request; require the status checks `lint`,
+- **Branch ruleset on `master`**: require a pull request; require the status checks `lint`,
   `typecheck`, `architecture`, `unused`, `test`, `audit`, `context`, `commitlint` and
   `CodeQL`; block force pushes; require linear history.
 - **Code security**: enable secret scanning, push protection, Dependabot alerts and private

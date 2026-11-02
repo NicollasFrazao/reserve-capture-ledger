@@ -66,5 +66,5 @@ Before committing, the full gate in [development-conventions.md](development-con
 
 ## Recipe: a pull request
 
-Branch from `main` with a prefix (`feat/`, `fix/`...), commit in Conventional Commits, run the gate,
+Branch from `master` with a prefix (`feat/`, `fix/`...), commit in Conventional Commits, run the gate,
 open the PR with the template filled in with results, and `Closes #N` in English.

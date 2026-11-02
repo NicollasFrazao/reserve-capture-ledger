@@ -29,7 +29,7 @@ npm run check:context       # agent surfaces are copies of .context/docs/README.
 ```
 
 These are exactly the CI jobs, one job per command, and every one of them is meant to be a required
-check on `main`. A green local gate means a green CI.
+check on `master`. A green local gate means a green CI.
 
 - Run them **one at a time**. Each of `lint`, `typecheck` and `test:coverage` takes a few hundred MB
   to over a GB; running them in parallel on a small machine is how it runs out of memory.
@@ -123,7 +123,7 @@ commit messages, PR and issue text.
 
 ## Branches, commits and pull requests
 
-- `main` is the default branch and is never pushed to directly. Branch prefixes: `feat/`, `fix/`,
+- `master` is the default branch and is never pushed to directly. Branch prefixes: `feat/`, `fix/`,
   `docs/`, `refactor/`, `chore/`, `test/`, `ci/`.
 - Commits follow **Conventional Commits** (`type(scope): description`), checked by commitlint in the
   `commit-msg` hook and, for every commit of a pull request, in CI.

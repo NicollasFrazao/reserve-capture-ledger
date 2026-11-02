@@ -8,6 +8,13 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    ignore:
+      # The runtime is Node 22 (CI, Docker image, engines); its types move with it, not ahead of it.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # typescript-eslint has no support for TypeScript 7 yet; revisit when it does.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
     groups:
       lint:
         patterns:

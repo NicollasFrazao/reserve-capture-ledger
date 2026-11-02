@@ -1,0 +1,37 @@
+name: Pipeline
+
+# Board sync and the agent, from the shared workflows in NicollasFrazao/.github.
+# Each job is off until its repository variable is true: BOARD_SYNC_ENABLED, AGENT_ENABLED.
+on:
+  issues:
+    types: [opened, reopened, labeled]
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  board:
+    if: vars.BOARD_SYNC_ENABLED == 'true' && github.actor != 'dependabot[bot]'
+    uses: NicollasFrazao/.github/.github/workflows/board-sync.yml@9d52a9e37056f4e699c0a97e3f2e4e1ac509f3ba # master
+    secrets:
+      BOARD_TOKEN: ${{ secrets.BOARD_TOKEN }}
+
+  agent:
+    if: >-
+      vars.AGENT_ENABLED == 'true'
+      && github.event_name == 'issues'
+      && github.event.action == 'labeled'
+      && github.event.label.name == 'agent'
+    uses: NicollasFrazao/.github/.github/workflows/agent.yml@9d52a9e37056f4e699c0a97e3f2e4e1ac509f3ba # master
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    with:
+      sync-board: ${{ vars.BOARD_SYNC_ENABLED == 'true' }}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      AGENT_GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
+      BOARD_TOKEN: ${{ secrets.BOARD_TOKEN }}

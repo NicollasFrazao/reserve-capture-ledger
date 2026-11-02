@@ -22,4 +22,4 @@ goes here.
 | TD-05 | Single currency, single-entry ledger | Out of scope | `currency` on `Money` and tables; double-entry accounts |
 | TD-06 | Runs from source with `tsx`, no build or image | Out of scope | `tsc` build to `dist/` and a container image |
 | TD-07 | No listing endpoints (ledger history, reservations) | Not needed by the scenarios | Keyset-paginated `GET` routes |
-| TD-08 | Branch ruleset, secret scanning and push protection are not configured | Only possible once the repository is on GitHub | Repository settings after publishing (see CONTRIBUTING.md) |
+| TD-09 | Dependabot ignores TypeScript majors | typescript-eslint does not support TypeScript 7 yet | Remove the `typescript` ignore rule in `.github/dependabot.yml` once typescript-eslint supports 7.x |

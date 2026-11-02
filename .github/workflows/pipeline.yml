@@ -13,7 +13,7 @@ permissions: {}
 jobs:
   board:
     if: vars.BOARD_SYNC_ENABLED == 'true' && github.actor != 'dependabot[bot]'
-    uses: NicollasFrazao/.github/.github/workflows/board-sync.yml@9d52a9e37056f4e699c0a97e3f2e4e1ac509f3ba # master
+    uses: NicollasFrazao/.github/.github/workflows/board-sync.yml@fe61fbe1947547676176fd77780b11c958e9455c # master
     secrets:
       BOARD_TOKEN: ${{ secrets.BOARD_TOKEN }}
 
@@ -23,7 +23,7 @@ jobs:
       && github.event_name == 'issues'
       && github.event.action == 'labeled'
       && github.event.label.name == 'agent'
-    uses: NicollasFrazao/.github/.github/workflows/agent.yml@9d52a9e37056f4e699c0a97e3f2e4e1ac509f3ba # master
+    uses: NicollasFrazao/.github/.github/workflows/agent.yml@fe61fbe1947547676176fd77780b11c958e9455c # master
     permissions:
       contents: write
       pull-requests: write
